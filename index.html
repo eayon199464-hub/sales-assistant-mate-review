@@ -2844,7 +2844,7 @@
   document.addEventListener('click',e=>{const b=e.target.closest('[data-copy-phone]');if(!b)return;e.stopPropagation();const phone=b.dataset.copyPhone;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(phone).then(()=>showToast('电话号码已复制')).catch(()=>showToast('电话号码：'+phone))}else showToast('电话号码：'+phone)});
   let pendingFollowKind='跟进',activeCommunicationCard=null,activeFollowCard=null;
   function setFollowResult(result='continue'){const target=$('[data-result="'+result+'"]',$('#resultChoices'));if(!target)return;$$('[data-result]',$('#resultChoices')).forEach(button=>button.classList.toggle('active',button===target));$$('[data-conditional]').forEach(panel=>panel.classList.toggle('show',panel.dataset.conditional===result));$('#submitFollow').textContent=result==='pause'?'确认暂败':'保存跟进'}
-  function openFollow(e,kind=pendingFollowKind,card=null){e&&e.stopPropagation();pendingFollowKind=kind||'跟进';activeFollowCard=card||activeCommunicationCard||$$('[data-detail-key]').find(item=>item.dataset.detailKey===currentDetailKey)||null;$('#followSheetTitle').textContent=pendingFollowKind==='跟进'?'写跟进':pendingFollowKind==='首跟'?'完成首跟':'完成'+pendingFollowKind+'跟进';const customerName=activeFollowCard?.dataset.followCustomer||activeFollowCard?.querySelector('.name,.order-buyer b')?.textContent?.trim()||detailData[currentDetailKey]?.name||'田一雄';if($('#followCustomerName'))$('#followCustomerName').value=customerName;const pauseButton=$('[data-result="pause"]',$('#resultChoices'));const canPause=(pendingFollowKind==='跟进'||pendingFollowKind==='首跟')&&isPauseEligible(activeFollowCard);pauseButton?.classList.toggle('hidden',!canPause);setFollowResult('continue');$('#followPauseReasonText').value='';$('#followPauseReasonCount').textContent='0/80，至少5字';cardActionMask.classList.remove('open');mask.classList.add('open')}
+  function openFollow(e,kind=pendingFollowKind,card=null){e&&e.stopPropagation();pendingFollowKind=kind||'跟进';activeFollowCard=card||activeCommunicationCard||$$('[data-detail-key]').find(item=>item.dataset.detailKey===currentDetailKey)||null;$('#followSheetTitle').textContent=pendingFollowKind==='跟进'?'写跟进':pendingFollowKind==='首跟'?'完成首跟':'完成'+pendingFollowKind+'跟进';const customerName=activeFollowCard?.dataset.followCustomer||activeFollowCard?.querySelector('.name,.order-buyer b')?.textContent?.trim()||detailData[currentDetailKey]?.name||'田一雄';if($('#followCustomerName'))$('#followCustomerName').value=customerName;const pauseButton=$('[data-result="pause"]',$('#resultChoices'));const canPause=((pendingFollowKind==='跟进'||pendingFollowKind==='首跟')&&isPauseEligible(activeFollowCard))||pendingFollowKind==='TDF';pauseButton?.classList.toggle('hidden',!canPause);setFollowResult('continue');$('#followPauseReasonText').value='';$('#followPauseReasonCount').textContent='0/80，至少5字';cardActionMask.classList.remove('open');mask.classList.add('open')}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-follow]');if(!b)return;const card=b.closest('[data-status-label],[data-order-card]'),customerName=card?.dataset.followCustomer||card?.querySelector('.name,.order-buyer b')?.textContent?.trim();openFollow(e,b.dataset.followKind||card?.dataset.statusLabel||'跟进',card);if($('#followCustomerName')&&customerName)$('#followCustomerName').value=customerName});$('#closeSheet').addEventListener('click',()=>mask.classList.remove('open'));mask.addEventListener('click',e=>{if(e.target===mask)mask.classList.remove('open')});
   $('#resultChoices').addEventListener('click',e=>{const b=e.target.closest('[data-result]');if(!b||b.classList.contains('hidden'))return;setFollowResult(b.dataset.result)});
   $('#followPauseReasonText')?.addEventListener('input',e=>{$('#followPauseReasonCount').textContent=e.target.value.trim().length+'/80，至少5字'});
@@ -3100,7 +3100,9 @@
       if(!resumeDate){showToast('请选择暂败截止日期');return}
       if(activeFollowCard){activeFollowCard.dataset.paused='true';activeFollowCard.dataset.pauseReason=reasonType+'：'+reason;activeFollowCard.dataset.pauseResumeDate=resumeDate}
       mask.classList.remove('open');filterTasks();
-      showActionResult('跟进已保存，线索已暂败','本次沟通已记录；'+reasonType+'。线索移出当前待办，暂败截止 '+resumeDate+' 后进入公海池，不自动回到原顾问。','回到待办',showHome,'留在详情');
+      const pauseTitle=pendingFollowKind==='TDF'?'TDF已保存，线索已暂败':'跟进已保存，线索已暂败';
+      const pauseBody=(pendingFollowKind==='TDF'?'本次TDF回访已作为真实跟进记录保存；':'本次沟通已记录；')+reasonType+'。线索移出当前待办，暂败截止 '+resumeDate+' 后进入公海池，不自动回到原顾问。';
+      showActionResult(pauseTitle,pauseBody,'回到待办',showHome,'留在详情');
       return;
     }
     mask.classList.remove('open');
@@ -3217,8 +3219,8 @@
       goal:['在不增加重复待办的前提下，确保试驾后反馈被完整收集。'],
       components:['试驾结果、客户评价、意向变化、待补字段和电话动作。'],
       data:['已完成试驾单、TDF任务、评价字段、关联普通跟进。'],
-      interactions:['电话后完成 TDF 并补充评价；必要时生成下一步线索经营计划。'],
-      rules:['TDF 是任务类型，不是新的客户阶段。','完成 TDF 后自动完成同客同日可归并的普通跟进。'],
+      interactions:['电话后完成 TDF 并补充评价；必要时生成下一步线索经营计划。','TDF跟进结果可选择暂败，但必须保存本次真实回访记录、暂败原因和截止日期。'],
+      rules:['TDF 是任务类型，不是新的客户阶段。','完成 TDF 后自动完成同客同日可归并的普通跟进。','TDF允许在跟进表单内暂败；卡片三点不提供快速暂败，避免未记录真实TDF沟通就直接关闭线索。'],
       pending:['需确认 TDF 的触发时间、超时和未接通重试规则。']
     }),
     'schedule-calendar':makeReviewSection('11','二级页','资源日历','统一查看试驾车、到店和活动资源占用，支持按日期和资源类型切换。',{
@@ -3322,7 +3324,7 @@
       components:['可暂败资格说明、暂败原因类型、5-80字补充说明、暂败截止日期和确认暂败按钮。'],
       data:['暂败原因类型、暂败说明、操作人、操作时间、暂败截止日期、当前线索状态。'],
       interactions:['卡片三个点 -> 快速暂败 -> 填写原因与截止日期 -> 确认暂败；成功后移出当前待办，到期进入公海池。','跟进表单中的暂败使用同一结果字段，但会额外保存本次真实沟通记录。'],
-      rules:['只有待首跟、待跟进线索显示快速暂败；订单、待外呼、PDC、待出席和TDF不显示该入口。','已小订/已大定线索、存在未完成试驾单/PDC/TDF时不可暂败。','原因类型和补充说明都必须保存，快速暂败不得伪造一条客户沟通记录。'],
+      rules:['只有待首跟、待跟进线索显示快速暂败；订单、待外呼、PDC、待出席和TDF不显示该入口。','TDF可在“跟进”表单内选择暂败，并保存真实TDF回访记录；但不允许从三点菜单直接快速暂败。','已小订/已大定线索、存在未完成试驾单/PDC/TDF时不可快速暂败。','原因类型和补充说明都必须保存，快速暂败不得伪造一条客户沟通记录。'],
       pending:['需确认自动激活、进入公海和审批场景的完整状态机。']
     }),
     empty:makeReviewSection('24','空状态','列表空状态','当前队列或筛选无匹配客户时给出明确原因和恢复路径。',{
@@ -3433,7 +3435,7 @@
     },
     'drive-tdf':{
       design:['TDF仅属于试驾完成后的回访视图，底层复用统一跟进记录。','到店和活动出席不生成TDF。'],
-      stateModel:['进入条件：试驾完成并触发TDF，尚未保存有效回访结果。','完成后关闭TDF，并按规则归并同客同日普通跟进；下一步可进入继续经营或下单。'],
+      stateModel:['进入条件：试驾完成并触发TDF，尚未保存有效回访结果。','完成后关闭TDF，并按规则归并同客同日普通跟进；下一步可进入继续经营、下单或暂败。','选择暂败时，必须落一条TDF回访记录，再进入暂败池；不能使用无沟通记录的快速暂败。'],
       tags:['列表标题表达待TDF主阶段，卡片保留TDF状态标签。','业务标签显示已试驾和需补评价；高意向只在回访结果支持时显示。','满意、有顾虑、转下单属于结果标签，保存前不预判。']
     },
     'schedule-calendar':{
